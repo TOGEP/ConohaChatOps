@@ -6,6 +6,7 @@ import (
 	"os/signal"
 
 	"github.com/TOGEP/ConohaChatOps/commands"
+	"github.com/TOGEP/ConohaChatOps/conoha"
 	"github.com/bwmarrin/discordgo"
 	"github.com/joho/godotenv"
 )
@@ -59,4 +60,5 @@ func main() {
 
 func discordReady(s *discordgo.Session, r *discordgo.Ready) {
 	commands.CreateCommands(s, os.Getenv("GUILDID"))
+	conoha.Init()
 }
