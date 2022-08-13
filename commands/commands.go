@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 
+	"github.com/TOGEP/ConohaChatOps/conoha"
 	"github.com/bwmarrin/discordgo"
 )
 
@@ -33,6 +34,21 @@ var (
 						"\nClose the server with `server-close`.",
 				},
 			})
+		},
+		"server-close": func(s *discordgo.Session, i *discordgo.InteractionCreate) {
+			err := conoha.CloseServer()
+			if err != nil {
+				log.Fatalf("Failed to stop server: %v", err)
+			}
+
+			s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+				Type: discordgo.InteractionResponseChannelMessageWithSource,
+				Data: &discordgo.InteractionResponseData{
+					Content: "Stopped the server!",
+				},
+			})
+
+			//TODO 停止したサーバーをイメージ保存後、サーバー削除
 		},
 	}
 )
