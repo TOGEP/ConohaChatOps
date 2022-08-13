@@ -7,6 +7,7 @@ import (
 	"github.com/gophercloud/gophercloud"
 	"github.com/gophercloud/gophercloud/openstack"
 	"github.com/gophercloud/gophercloud/openstack/compute/v2/extensions/startstop"
+	"github.com/gophercloud/gophercloud/openstack/compute/v2/servers"
 )
 
 var conohaClient *gophercloud.ProviderClient
@@ -49,5 +50,31 @@ func CloseServer() error {
 		log.Fatalf("Stop a Server Failed: %v", err)
 		return err
 	}
+	return nil
+}
+
+func CleateImage() error {
+	eo := gophercloud.EndpointOpts{
+		Type:   "compute",
+		Region: os.Getenv("CONOHA_ENDPOINT"),
+	}
+
+	computeClient, err := openstack.NewComputeV2(conohaClient, eo)
+	if err != nil {
+		log.Fatalf("Compute Client Failed: %v", err)
+		return err
+	}
+
+	snapshotOpts := servers.CreateImageOpts{
+		Name: "ConohaChatOps-snapshot",
+	}
+
+	imageID, err := servers.CreateImage(computeClient, os.Getenv("CONOHA_SERVERID"), snapshotOpts).ExtractImageID()
+
+	if err != nil {
+		log.Fatalf("Create Image Failed: %v", err)
+		return err
+	}
+	log.Println(imageID)
 	return nil
 }

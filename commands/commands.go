@@ -3,6 +3,7 @@ package commands
 import (
 	"fmt"
 	"log"
+	"time"
 
 	"github.com/TOGEP/ConohaChatOps/conoha"
 	"github.com/bwmarrin/discordgo"
@@ -36,6 +37,7 @@ var (
 			})
 		},
 		"server-close": func(s *discordgo.Session, i *discordgo.InteractionCreate) {
+			//TODO 既にサーバーが閉じられているか確認する
 			err := conoha.CloseServer()
 			if err != nil {
 				log.Fatalf("Failed to stop server: %v", err)
@@ -48,7 +50,28 @@ var (
 				},
 			})
 
-			//TODO 停止したサーバーをイメージ保存後、サーバー削除
+			//TODO 決め打ちで待機してるけど、もっといい方法ありそう...
+			time.Sleep(time.Second * 10)
+
+			//TODO 実行していた時間の利用料金も表示させたい
+			err = conoha.CleateImage()
+			if err != nil {
+				log.Fatalf("Failed to create image: %v", err)
+			}
+
+			s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+				Type: discordgo.InteractionResponseChannelMessageWithSource,
+				Data: &discordgo.InteractionResponseData{
+					Content: "Started saving server.\n" +
+						"Do not enter any other commands for 1 minute...",
+				},
+			})
+
+			//TODO 決め打ちで待機してるけど、もっといい方法ありそう...
+			//TODO 排他制御的な仕組みで他のコマンドを受け付けないようにしたい
+			time.Sleep(time.Minute)
+
+			//TODO サーバー削除
 		},
 	}
 )
