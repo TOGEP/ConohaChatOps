@@ -46,12 +46,13 @@ var (
 			s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
 				Type: discordgo.InteractionResponseChannelMessageWithSource,
 				Data: &discordgo.InteractionResponseData{
-					Content: "Stopped the server!",
+					Content: "Started closing server.\n" +
+						"Do not enter any other commands for 5 minute...",
 				},
 			})
 
 			//TODO 決め打ちで待機してるけど、もっといい方法ありそう...
-			time.Sleep(time.Second * 10)
+			time.Sleep(time.Minute * 2)
 
 			//TODO 実行していた時間の利用料金も表示させたい
 			err = conoha.CleateImage()
@@ -62,16 +63,28 @@ var (
 			s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
 				Type: discordgo.InteractionResponseChannelMessageWithSource,
 				Data: &discordgo.InteractionResponseData{
-					Content: "Started saving server.\n" +
-						"Do not enter any other commands for 1 minute...",
+					Content: "Started saving server.",
 				},
 			})
 
 			//TODO 決め打ちで待機してるけど、もっといい方法ありそう...
 			//TODO 排他制御的な仕組みで他のコマンドを受け付けないようにしたい
-			time.Sleep(time.Minute)
+			time.Sleep(time.Minute * 2)
 
 			//TODO サーバー削除
+			err = conoha.DeleteServer()
+			if err != nil {
+				log.Fatalf("Failed to delete server: %v", err)
+			}
+
+			time.Sleep(time.Minute * 2)
+
+			s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+				Type: discordgo.InteractionResponseChannelMessageWithSource,
+				Data: &discordgo.InteractionResponseData{
+					Content: "Closed sercer gracefully.",
+				},
+			})
 		},
 	}
 )

@@ -1,6 +1,8 @@
 # ConohaChatOps
 
 ### setup
+ネームタグ`ConohaChatOps`でConoha VPSを追加
+
 ```
 $vi .env
 BOTTOKEN=
@@ -10,5 +12,4 @@ CONOHA_TENANTID=
 CONOHA_TENANTNAME=
 CONOHA_USERNAME=
 CONOHA_PASSWORD=
-CONOHA_SERVERID=
 ```
