@@ -3,7 +3,6 @@ package commands
 import (
 	"fmt"
 	"log"
-	"time"
 
 	"github.com/TOGEP/ConohaChatOps/conoha"
 	"github.com/bwmarrin/discordgo"
@@ -38,11 +37,8 @@ var (
 		},
 		"server-close": func(s *discordgo.Session, i *discordgo.InteractionCreate) {
 			//TODO 既にサーバーが閉じられているか確認する
-			err := conoha.CloseServer()
-			if err != nil {
-				log.Fatalf("Failed to stop server: %v", err)
-			}
 
+			//TODO 実行していた時間の利用料金も表示させたい
 			s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
 				Type: discordgo.InteractionResponseChannelMessageWithSource,
 				Data: &discordgo.InteractionResponseData{
@@ -51,40 +47,24 @@ var (
 				},
 			})
 
-			//TODO 決め打ちで待機してるけど、もっといい方法ありそう...
-			time.Sleep(time.Minute * 2)
+			err := conoha.CloseServer()
+			if err != nil {
+				log.Fatalf("Failed to stop server: %v", err)
+			}
+			log.Println("closed server.")
 
-			//TODO 実行していた時間の利用料金も表示させたい
 			err = conoha.CleateImage()
 			if err != nil {
 				log.Fatalf("Failed to create image: %v", err)
 			}
+			log.Println("saved server image.")
 
-			s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
-				Type: discordgo.InteractionResponseChannelMessageWithSource,
-				Data: &discordgo.InteractionResponseData{
-					Content: "Started saving server.",
-				},
-			})
-
-			//TODO 決め打ちで待機してるけど、もっといい方法ありそう...
-			//TODO 排他制御的な仕組みで他のコマンドを受け付けないようにしたい
-			time.Sleep(time.Minute * 2)
-
-			//TODO サーバー削除
 			err = conoha.DeleteServer()
 			if err != nil {
 				log.Fatalf("Failed to delete server: %v", err)
 			}
+			log.Println("deleted server")
 
-			time.Sleep(time.Minute * 2)
-
-			s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
-				Type: discordgo.InteractionResponseChannelMessageWithSource,
-				Data: &discordgo.InteractionResponseData{
-					Content: "Closed sercer gracefully.",
-				},
-			})
 		},
 	}
 )

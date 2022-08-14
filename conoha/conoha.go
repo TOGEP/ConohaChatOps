@@ -4,10 +4,12 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"time"
 
 	"github.com/gophercloud/gophercloud"
 	"github.com/gophercloud/gophercloud/openstack"
 	"github.com/gophercloud/gophercloud/openstack/compute/v2/extensions/startstop"
+	"github.com/gophercloud/gophercloud/openstack/compute/v2/images"
 	"github.com/gophercloud/gophercloud/openstack/compute/v2/servers"
 	"github.com/gophercloud/gophercloud/pagination"
 )
@@ -30,7 +32,6 @@ func Init() {
 
 	conohaClient = client
 
-	//DEBUG
 	log.Println("Start!")
 
 	return
@@ -69,6 +70,13 @@ func CloseServer() error {
 		log.Fatalf("Stop a Server Failed: %v", err)
 		return err
 	}
+
+	err = servers.WaitForStatus(computeClient, uuid, "SHUTOFF", 300)
+	if err != nil {
+		log.Fatalf("Unable to create for server: %v", err)
+		return err
+	}
+
 	return nil
 }
 
@@ -105,6 +113,13 @@ func DeleteServer() error {
 		log.Fatalf("Delete a Server Failed: %v", err)
 		return err
 	}
+
+	err = servers.WaitForStatus(computeClient, uuid, "DELETED", 300)
+	if err != nil {
+		log.Fatalf("Unable to create for server: %v", err)
+		return err
+	}
+
 	return nil
 }
 
@@ -141,11 +156,31 @@ func CleateImage() error {
 		Name: "ConohaChatOps-snapshot",
 	}
 
-	_, err = servers.CreateImage(computeClient, uuid, snapshotOpts).ExtractImageID()
-
+	imageID, err := servers.CreateImage(computeClient, uuid, snapshotOpts).ExtractImageID()
 	if err != nil {
 		log.Fatalf("Create Image Failed: %v", err)
 		return err
+	}
+
+	err = WaitForImage(computeClient, imageID)
+	if err != nil {
+		log.Fatalf("Unable to save for server image: %v", err)
+		return err
+	}
+
+	return nil
+}
+
+func WaitForImage(client *gophercloud.ServiceClient, imageID string) error {
+	for {
+		image, err := images.Get(client, imageID).Extract()
+		if err != nil {
+			return err
+		}
+		if image.Status == "ACTIVE" {
+			break
+		}
+		time.Sleep(time.Second * 10)
 	}
 	return nil
 }
