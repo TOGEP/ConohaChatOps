@@ -97,6 +97,40 @@ func GetFlavorRef(memSize int64) (string, error) {
 	return flavorRef, nil
 }
 
+func GetIPaddr() (string, error) {
+	eo := gophercloud.EndpointOpts{
+		Type:   "compute",
+		Region: os.Getenv("CONOHA_ENDPOINT"),
+	}
+	computeClient, err := openstack.NewComputeV2(conohaClient, eo)
+	if err != nil {
+		log.Fatalf("Compute Client Failed: %v", err)
+		return "", err
+	}
+
+	var ip string
+	pager := servers.List(computeClient, nil)
+	pager.EachPage(func(page pagination.Page) (bool, error) {
+		serverList, err := servers.ExtractServers(page)
+		if err != nil {
+			fmt.Println(err)
+			return false, err
+		}
+		for _, s := range serverList {
+			for _, networkAddresses := range s.Addresses {
+				for _, element := range networkAddresses.([]interface{}) {
+					address := element.(map[string]interface{})
+					if address["version"].(float64) == 4 {
+						ip = address["addr"].(string)
+					}
+				}
+			}
+		}
+		return true, nil
+	})
+	return ip, nil
+}
+
 func OpenServer(imageRef string, flavorRef string) error {
 	eo := gophercloud.EndpointOpts{
 		Type:   "compute",
@@ -258,7 +292,7 @@ func CleateImage() error {
 		return err
 	}
 
-	err = WaitForImage(computeClient, imageID)
+	err = WaitForImage(computeClient, imageID, "ACTIVE")
 	if err != nil {
 		log.Fatalf("Unable to save for server image: %v", err)
 		return err
@@ -267,13 +301,71 @@ func CleateImage() error {
 	return nil
 }
 
-func WaitForImage(client *gophercloud.ServiceClient, imageID string) error {
+func DeleteImage() error {
+	eo := gophercloud.EndpointOpts{
+		Type:   "compute",
+		Region: os.Getenv("CONOHA_ENDPOINT"),
+	}
+	computeClient, err := openstack.NewComputeV2(conohaClient, eo)
+	if err != nil {
+		log.Fatalf("Compute Client Failed: %v", err)
+		return err
+	}
+	eo = gophercloud.EndpointOpts{
+		Type:   "image",
+		Region: os.Getenv("CONOHA_ENDPOINT"),
+	}
+	imageClient, err := openstack.NewImageServiceV2(conohaClient, eo)
+	if err != nil {
+		log.Fatalf("Compute Client Failed: %v", err)
+		return err
+	}
+
+	var uuid string
+	pager := images.ListDetail(computeClient, nil)
+	pager.EachPage(func(page pagination.Page) (bool, error) {
+		imageList, err := images.ExtractImages(page)
+		if err != nil {
+			fmt.Println(err)
+			return false, err
+		}
+		for _, i := range imageList {
+			if i.Name == "ConohaChatOps-snapshot" {
+				uuid = i.ID
+			}
+		}
+		return true, nil
+	})
+
+	err = images.Delete(imageClient, uuid).ExtractErr()
+	if err != nil {
+		log.Fatalf("Delete Image Failed: %v", err)
+		return err
+	}
+
+	//TODO Createと違ってDeleteの場合はGetしてStatusを見ることができない
+	//時間のかかる処理でもないので、とりあえず決め打ち待機で...
+	time.Sleep(time.Second * 10)
+	/*
+		err = WaitForImage(computeClient, uuid, "DELETED")
+		if err != nil {
+			log.Fatalf("Unable to save for server image: %v", err)
+			return err
+		}
+	*/
+
+	return nil
+}
+
+func WaitForImage(client *gophercloud.ServiceClient, imageID string, target string) error {
 	for {
 		image, err := images.Get(client, imageID).Extract()
 		if err != nil {
 			return err
 		}
-		if image.Status == "ACTIVE" {
+		if image.Status == target {
+			// conflicting防止
+			time.Sleep(time.Second * 10)
 			break
 		}
 		time.Sleep(time.Second * 10)

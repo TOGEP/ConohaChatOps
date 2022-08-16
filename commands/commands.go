@@ -24,6 +24,7 @@ var (
 					Description: "Choice memory size",
 					Type:        discordgo.ApplicationCommandOptionInteger,
 					Required:    true,
+					//TODO 512gbのプランも追加するべき?
 					Choices: []*discordgo.ApplicationCommandOptionChoice{
 						{
 							Name:  "1gb-flavor",
@@ -79,7 +80,7 @@ var (
 
 			//TODO 実行していた時間の利用料金も表示させたい
 			s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
-				Type: discordgo.InteractionResponseChannelMessageWithSource,
+				Type: discordgo.InteractionResponseDeferredChannelMessageWithSource,
 				Data: &discordgo.InteractionResponseData{
 					Content: "Started closing server.\n" +
 						"Do not enter any other commands for 5 minute...",
@@ -103,6 +104,10 @@ var (
 				log.Fatalf("Failed to delete server: %v", err)
 			}
 			log.Println("deleted server")
+
+			s.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{
+				Content: "The server was successfully stopped!",
+			})
 		},
 		"server-open": func(s *discordgo.Session, i *discordgo.InteractionCreate) {
 			//TODO 既にサーバーが開いているか確認する
@@ -111,10 +116,10 @@ var (
 			memSize := options[0].IntValue()
 
 			s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
-				Type: discordgo.InteractionResponseChannelMessageWithSource,
+				Type: discordgo.InteractionResponseDeferredChannelMessageWithSource,
 				Data: &discordgo.InteractionResponseData{
 					Content: "Started opening server.(memory size " + strconv.FormatInt(memSize, 10) + "GB plan)\n" +
-						"Do not enter any other commands for 5 minute...",
+						"Do not enter any other commands for about 5 minute...",
 				},
 			})
 
@@ -132,18 +137,32 @@ var (
 
 			// イメージID,プランIDを基にVM作成
 			log.Println("Opening server...")
-			log.Printf("imageRed:%v\nflavorRef:%v\n", imageRef, flavorRef)
+			log.Printf("imageRef:%v\n", imageRef)
+			log.Printf("flavorRef:%v\n", flavorRef)
 			err = conoha.OpenServer(imageRef, flavorRef)
 			if err != nil {
 				log.Fatalf("Failed to stop server: %v", err)
 			}
 			log.Println("Opened server.")
 
-			//TODO IPの取得
+			// IPの取得
+			ip, err := conoha.GetIPaddr()
+			if err != nil {
+				log.Fatalf("IP addr cloud not be found: %v", err)
+			}
 
-			//TODO discordにIPの出力
+			// discordにIPの出力
+			s.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{
+				Content: "The server was successfully opened!\n" +
+					"Server IP:" + ip,
+			})
 
 			//TODO 使用したイメージの削除
+			err = conoha.DeleteImage()
+			if err != nil {
+				log.Fatalf("Failed to delete server image: %v", err)
+			}
+			log.Println("Deleted server image.")
 		},
 	}
 )
