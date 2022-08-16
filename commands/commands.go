@@ -3,6 +3,7 @@ package commands
 import (
 	"fmt"
 	"log"
+	"strconv"
 
 	"github.com/TOGEP/ConohaChatOps/conoha"
 	"github.com/bwmarrin/discordgo"
@@ -17,6 +18,44 @@ var (
 		{
 			Name:        "server-open",
 			Description: "Open server",
+			Options: []*discordgo.ApplicationCommandOption{
+				{
+					Name:        "memory-size",
+					Description: "Choice memory size",
+					Type:        discordgo.ApplicationCommandOptionInteger,
+					Required:    true,
+					Choices: []*discordgo.ApplicationCommandOptionChoice{
+						{
+							Name:  "1gb-flavor",
+							Value: 1,
+						},
+						{
+							Name:  "2gb-flavor",
+							Value: 2,
+						},
+						{
+							Name:  "4gb-flavor",
+							Value: 4,
+						},
+						{
+							Name:  "8gb-flavor",
+							Value: 8,
+						},
+						{
+							Name:  "16gb-flavor",
+							Value: 16,
+						},
+						{
+							Name:  "32gb-flavor",
+							Value: 32,
+						},
+						{
+							Name:  "64gb-flavor",
+							Value: 64,
+						},
+					},
+				},
+			},
 		},
 		{
 			Name:        "server-close",
@@ -64,7 +103,47 @@ var (
 				log.Fatalf("Failed to delete server: %v", err)
 			}
 			log.Println("deleted server")
+		},
+		"server-open": func(s *discordgo.Session, i *discordgo.InteractionCreate) {
+			//TODO 既にサーバーが開いているか確認する
 
+			options := i.ApplicationCommandData().Options
+			memSize := options[0].IntValue()
+
+			s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+				Type: discordgo.InteractionResponseChannelMessageWithSource,
+				Data: &discordgo.InteractionResponseData{
+					Content: "Started opening server.(memory size " + strconv.FormatInt(memSize, 10) + "GB plan)\n" +
+						"Do not enter any other commands for 5 minute...",
+				},
+			})
+
+			// 保存したイメージIDの取り出し
+			imageRef, err := conoha.GetImageRef()
+			if err != nil {
+				log.Fatalf("Image could not be found: %v", err)
+			}
+
+			// 該当プランIDの取り出し
+			flavorRef, err := conoha.GetFlavorRef(memSize)
+			if err != nil {
+				log.Fatalf("Flavor cloud not be found: %v", err)
+			}
+
+			// イメージID,プランIDを基にVM作成
+			log.Println("Opening server...")
+			log.Printf("imageRed:%v\nflavorRef:%v\n", imageRef, flavorRef)
+			err = conoha.OpenServer(imageRef, flavorRef)
+			if err != nil {
+				log.Fatalf("Failed to stop server: %v", err)
+			}
+			log.Println("Opened server.")
+
+			//TODO IPの取得
+
+			//TODO discordにIPの出力
+
+			//TODO 使用したイメージの削除
 		},
 	}
 )

@@ -9,6 +9,7 @@ import (
 	"github.com/gophercloud/gophercloud"
 	"github.com/gophercloud/gophercloud/openstack"
 	"github.com/gophercloud/gophercloud/openstack/compute/v2/extensions/startstop"
+	"github.com/gophercloud/gophercloud/openstack/compute/v2/flavors"
 	"github.com/gophercloud/gophercloud/openstack/compute/v2/images"
 	"github.com/gophercloud/gophercloud/openstack/compute/v2/servers"
 	"github.com/gophercloud/gophercloud/pagination"
@@ -35,6 +36,101 @@ func Init() {
 	log.Println("Start!")
 
 	return
+}
+
+func GetImageRef() (string, error) {
+	eo := gophercloud.EndpointOpts{
+		Type:   "compute",
+		Region: os.Getenv("CONOHA_ENDPOINT"),
+	}
+	computeClient, err := openstack.NewComputeV2(conohaClient, eo)
+	if err != nil {
+		log.Fatalf("Compute Client Failed: %v", err)
+		return "", err
+	}
+
+	var imageRef string
+	pager := images.ListDetail(computeClient, nil)
+	pager.EachPage(func(page pagination.Page) (bool, error) {
+		imageList, err := images.ExtractImages(page)
+		if err != nil {
+			fmt.Println(err)
+			return false, err
+		}
+		for _, i := range imageList {
+			if i.Name == "ConohaChatOps-snapshot" {
+				imageRef = i.ID
+			}
+		}
+		return true, nil
+	})
+	return imageRef, nil
+}
+
+func GetFlavorRef(memSize int64) (string, error) {
+	eo := gophercloud.EndpointOpts{
+		Type:   "compute",
+		Region: os.Getenv("CONOHA_ENDPOINT"),
+	}
+	computeClient, err := openstack.NewComputeV2(conohaClient, eo)
+	if err != nil {
+		log.Fatalf("Compute Client Failed: %v", err)
+		return "", err
+	}
+
+	var flavorRef string
+	pager := flavors.ListDetail(computeClient, nil)
+	pager.EachPage(func(page pagination.Page) (bool, error) {
+		flavorList, err := flavors.ExtractFlavors(page)
+		if err != nil {
+			fmt.Println(err)
+			return false, err
+		}
+		for _, f := range flavorList {
+			//MEMO Conohaの旧プラン(Disk:50GB)のIDも残っている為DISKとRAMで判定
+			if f.Disk == 100 && f.RAM == int(memSize)*1024 {
+				flavorRef = f.ID
+			}
+		}
+		return true, nil
+	})
+	return flavorRef, nil
+}
+
+func OpenServer(imageRef string, flavorRef string) error {
+	eo := gophercloud.EndpointOpts{
+		Type:   "compute",
+		Region: os.Getenv("CONOHA_ENDPOINT"),
+	}
+	computeClient, err := openstack.NewComputeV2(conohaClient, eo)
+	if err != nil {
+		log.Fatalf("Compute Client Failed: %v", err)
+		return err
+	}
+
+	co := servers.CreateOpts{
+		Name:      "ConohaChatOps",
+		ImageRef:  imageRef,
+		FlavorRef: flavorRef,
+		AdminPass: os.Getenv("CONOHA_PASSWORD"),
+		Metadata: map[string]string{
+			"instance_name_tag": "ConohaChatOps",
+		},
+	}
+
+	server, err := servers.Create(computeClient, co).Extract()
+	if err != nil {
+		log.Fatalf("Create a Server Failed: %v", err)
+		return err
+	}
+
+	err = servers.WaitForStatus(computeClient, server.ID, "ACTIVE", 300)
+	if err != nil {
+		log.Fatalf("Unable to create for server: %v", err)
+		return err
+	}
+
+	return nil
 }
 
 func CloseServer() error {
@@ -73,7 +169,7 @@ func CloseServer() error {
 
 	err = servers.WaitForStatus(computeClient, uuid, "SHUTOFF", 300)
 	if err != nil {
-		log.Fatalf("Unable to create for server: %v", err)
+		log.Fatalf("Unable to stop for server: %v", err)
 		return err
 	}
 
