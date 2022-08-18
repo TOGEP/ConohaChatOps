@@ -24,34 +24,34 @@ var (
 					Description: "Choice memory size",
 					Type:        discordgo.ApplicationCommandOptionInteger,
 					Required:    true,
-					//TODO 512gbのプランも追加するべき?
+					//TODO 512Mbのプランも追加するべき?
 					Choices: []*discordgo.ApplicationCommandOptionChoice{
 						{
-							Name:  "1gb-flavor",
+							Name:  "1GB",
 							Value: 1,
 						},
 						{
-							Name:  "2gb-flavor",
+							Name:  "2GB",
 							Value: 2,
 						},
 						{
-							Name:  "4gb-flavor",
+							Name:  "4GB",
 							Value: 4,
 						},
 						{
-							Name:  "8gb-flavor",
+							Name:  "8GB",
 							Value: 8,
 						},
 						{
-							Name:  "16gb-flavor",
+							Name:  "16GB",
 							Value: 16,
 						},
 						{
-							Name:  "32gb-flavor",
+							Name:  "32GB",
 							Value: 32,
 						},
 						{
-							Name:  "64gb-flavor",
+							Name:  "64GB",
 							Value: 64,
 						},
 					},
@@ -71,7 +71,7 @@ var (
 				Data: &discordgo.InteractionResponseData{
 					Content: "Hi there, I am a bot built on slash commands!\n" +
 						"\nOpen the server with `/server-open`." +
-						"\nClose the server with `server-close`.",
+						"\nClose the server with `/server-close`.",
 				},
 			})
 		},
@@ -87,24 +87,28 @@ var (
 				},
 			})
 
+			// 起動中のVMを停止
 			err := conoha.CloseServer()
 			if err != nil {
 				log.Fatalf("Failed to stop server: %v", err)
 			}
 			log.Println("closed server.")
 
-			err = conoha.CleateImage()
+			// 停止したVMのイメージ作成
+			err = conoha.CreateImage()
 			if err != nil {
 				log.Fatalf("Failed to create image: %v", err)
 			}
 			log.Println("saved server image.")
 
+			// イメージ作成済みのVMを削除
 			err = conoha.DeleteServer()
 			if err != nil {
 				log.Fatalf("Failed to delete server: %v", err)
 			}
 			log.Println("deleted server")
 
+			// discordに完了通知
 			s.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{
 				Content: "The server was successfully stopped!",
 			})

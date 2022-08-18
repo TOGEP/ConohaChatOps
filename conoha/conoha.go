@@ -246,14 +246,14 @@ func DeleteServer() error {
 
 	err = servers.WaitForStatus(computeClient, uuid, "DELETED", 300)
 	if err != nil {
-		log.Fatalf("Unable to create for server: %v", err)
+		log.Fatalf("Unable to delete for server: %v", err)
 		return err
 	}
 
 	return nil
 }
 
-func CleateImage() error {
+func CreateImage() error {
 	eo := gophercloud.EndpointOpts{
 		Type:   "compute",
 		Region: os.Getenv("CONOHA_ENDPOINT"),
@@ -346,13 +346,6 @@ func DeleteImage() error {
 	//TODO Createと違ってDeleteの場合はGetしてStatusを見ることができない
 	//時間のかかる処理でもないので、とりあえず決め打ち待機で...
 	time.Sleep(time.Second * 10)
-	/*
-		err = WaitForImage(computeClient, uuid, "DELETED")
-		if err != nil {
-			log.Fatalf("Unable to save for server image: %v", err)
-			return err
-		}
-	*/
 
 	return nil
 }
