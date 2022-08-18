@@ -147,6 +147,10 @@ func OpenServer(imageRef string, flavorRef string) error {
 		ImageRef:  imageRef,
 		FlavorRef: flavorRef,
 		AdminPass: os.Getenv("CONOHA_PASSWORD"),
+		SecurityGroups: []string{
+			"default",
+			"gncs-ipv4-all",
+		},
 		Metadata: map[string]string{
 			"instance_name_tag": "ConohaChatOps",
 		},
