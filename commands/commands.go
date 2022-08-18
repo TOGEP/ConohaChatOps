@@ -10,7 +10,8 @@ import (
 )
 
 var (
-	Commands = []*discordgo.ApplicationCommand{
+	isRunning bool = false
+	Commands       = []*discordgo.ApplicationCommand{
 		{
 			Name:        "server-help",
 			Description: "Help command",
@@ -78,6 +79,17 @@ var (
 		"server-close": func(s *discordgo.Session, i *discordgo.InteractionCreate) {
 			//TODO 既にサーバーが閉じられているか確認する
 
+			if isRunning == true {
+				s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+					Type: discordgo.InteractionResponseChannelMessageWithSource,
+					Data: &discordgo.InteractionResponseData{
+						Content: "Another commands running. Please try again later.",
+					},
+				})
+				return
+			}
+
+			isRunning = true
 			//TODO 実行していた時間の利用料金も表示させたい
 			s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
 				Type: discordgo.InteractionResponseDeferredChannelMessageWithSource,
@@ -112,10 +124,22 @@ var (
 			s.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{
 				Content: "The server was successfully stopped!",
 			})
+			isRunning = false
 		},
 		"server-open": func(s *discordgo.Session, i *discordgo.InteractionCreate) {
 			//TODO 既にサーバーが開いているか確認する
 
+			if isRunning == true {
+				s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+					Type: discordgo.InteractionResponseChannelMessageWithSource,
+					Data: &discordgo.InteractionResponseData{
+						Content: "Another commands running. Please try again later.",
+					},
+				})
+				return
+			}
+
+			isRunning = true
 			options := i.ApplicationCommandData().Options
 			memSize := options[0].IntValue()
 
@@ -167,6 +191,7 @@ var (
 				log.Fatalf("Failed to delete server image: %v", err)
 			}
 			log.Println("Deleted server image.")
+			isRunning = false
 		},
 	}
 )
