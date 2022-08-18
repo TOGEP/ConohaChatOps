@@ -22,8 +22,7 @@ var (
 func main() {
 	err := godotenv.Load()
 	if err != nil {
-		log.Fatalf(".env file not find")
-		return
+		log.Println(".env file not find.")
 	}
 
 	discord, err := discordgo.New("Bot " + os.Getenv("BOTTOKEN"))

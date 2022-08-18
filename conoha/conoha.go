@@ -345,7 +345,7 @@ func DeleteImage() error {
 
 	//TODO Createと違ってDeleteの場合はGetしてStatusを見ることができない
 	//時間のかかる処理でもないので、とりあえず決め打ち待機で...
-	time.Sleep(time.Second * 10)
+	time.Sleep(time.Second * 30)
 
 	return nil
 }
