@@ -250,8 +250,11 @@ func DeleteServer() error {
 
 	err = servers.WaitForStatus(computeClient, uuid, "DELETED", 300)
 	if err != nil {
-		log.Fatalf("Unable to delete for server: %v", err)
-		return err
+		if _, ok := err.(gophercloud.ErrDefault404); !ok {
+			log.Fatalf("Deleting server %q failed: %v", uuid, err)
+			return nil
+		}
+		log.Printf("Cannot find server: %q. It's probably already been deleted.\n", uuid)
 	}
 
 	return nil
