@@ -63,5 +63,42 @@ Go1.16 or later
 </details>
 
 ## ローカルでBotを稼働する場合
+1. 本リポジトリをローカルに持ってくる
+```sh
+$ git clone https://github.com/TOGEP/ConohaChatOps
+$ cd ConohaChatOps
+```
+
+2. [環境変数の取得方法](#環境変数の取得方法)で取得した各種変数を.envファイルに書き込む
+
+```sh
+$ vi .env
+```
+
+```ini
+BOTTOKEN=
+GUILDID=
+CONOHA_ENDPOINT=
+CONOHA_TENANTID=
+CONOHA_TENANTNAME=
+CONOHA_USERNAME=
+CONOHA_PASSWORD=
+```
+
+3. 実行
+```sh
+$ go run main.go
+```
 
 ## HerokuでBotを稼働する場合
+1. 本リポジトリをForkする
+
+2. [HerokuとGithubを連携させて自動デプロイ環境を作ろう！](https://j-hack.gitbooks.io/deploy-meteor-app-to-heroku/content/step4.html)を参考にデプロイ環境を構築
+
+3. 「Settings」 > 「Config Vars」を以下のように設定
+
+![Heroku-SettingsConfigVars](docs/img/Heroku-SettingsConfigVars.png)
+
+4. 「Settings」 > 「Buildpacks」 > 「Add buildpack」 から`heroku/go`を指定
+
+5. 右上の「View logs」から起動を確認!
