@@ -6,6 +6,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/bwmarrin/discordgo"
 	"github.com/gophercloud/gophercloud"
 	"github.com/gophercloud/gophercloud/openstack"
 	"github.com/gophercloud/gophercloud/openstack/compute/v2/extensions/startstop"
@@ -15,9 +16,17 @@ import (
 	"github.com/gophercloud/gophercloud/pagination"
 )
 
-var conohaClient *gophercloud.ProviderClient
+type Bot struct {
+	Session        *discordgo.Session
+	providerClient *gophercloud.ProviderClient
+	computeClient  *gophercloud.ServiceClient
+	imageClient    *gophercloud.ServiceClient
+}
 
-func Init() {
+func NewBot(s *discordgo.Session) (*Bot, error) {
+	bot := &Bot{
+		Session: s,
+	}
 	opts := gophercloud.AuthOptions{
 		IdentityEndpoint: "https://identity." + os.Getenv("CONOHA_ENDPOINT") + ".conoha.io/v2.0",
 		Username:         os.Getenv("CONOHA_USERNAME"),
@@ -25,32 +34,40 @@ func Init() {
 		Password:         os.Getenv("CONOHA_PASSWORD"),
 	}
 
-	client, err := openstack.AuthenticatedClient(opts)
+	pc, err := openstack.AuthenticatedClient(opts)
 	if err != nil {
-		log.Fatalf("Authentication Failed: %v", err)
-		return
+		return nil, err
 	}
+	bot.providerClient = pc
 
-	conohaClient = client
-
-	log.Println("Start!")
-
-	return
-}
-
-func GetImageRef() (string, error) {
 	eo := gophercloud.EndpointOpts{
 		Type:   "compute",
 		Region: os.Getenv("CONOHA_ENDPOINT"),
 	}
-	computeClient, err := openstack.NewComputeV2(conohaClient, eo)
+	cc, err := openstack.NewComputeV2(bot.providerClient, eo)
+	if err != nil {
+		return nil, err
+	}
+	bot.computeClient = cc
+
+	eo = gophercloud.EndpointOpts{
+		Type:   "image",
+		Region: os.Getenv("CONOHA_ENDPOINT"),
+	}
+	ic, err := openstack.NewImageServiceV2(bot.providerClient, eo)
 	if err != nil {
 		log.Fatalf("Compute Client Failed: %v", err)
-		return "", err
+		return nil, err
 	}
+	bot.imageClient = ic
 
+	log.Println("Start!")
+	return bot, nil
+}
+
+func (bot *Bot) GetImageRef() (string, error) {
 	var imageRef string
-	pager := images.ListDetail(computeClient, nil)
+	pager := images.ListDetail(bot.computeClient, nil)
 	pager.EachPage(func(page pagination.Page) (bool, error) {
 		imageList, err := images.ExtractImages(page)
 		if err != nil {
@@ -67,19 +84,9 @@ func GetImageRef() (string, error) {
 	return imageRef, nil
 }
 
-func GetFlavorRef(memSize int64) (string, error) {
-	eo := gophercloud.EndpointOpts{
-		Type:   "compute",
-		Region: os.Getenv("CONOHA_ENDPOINT"),
-	}
-	computeClient, err := openstack.NewComputeV2(conohaClient, eo)
-	if err != nil {
-		log.Fatalf("Compute Client Failed: %v", err)
-		return "", err
-	}
-
+func (bot *Bot) GetFlavorRef(memSize int64) (string, error) {
 	var flavorRef string
-	pager := flavors.ListDetail(computeClient, nil)
+	pager := flavors.ListDetail(bot.computeClient, nil)
 	pager.EachPage(func(page pagination.Page) (bool, error) {
 		flavorList, err := flavors.ExtractFlavors(page)
 		if err != nil {
@@ -97,19 +104,9 @@ func GetFlavorRef(memSize int64) (string, error) {
 	return flavorRef, nil
 }
 
-func GetIPaddr() (string, error) {
-	eo := gophercloud.EndpointOpts{
-		Type:   "compute",
-		Region: os.Getenv("CONOHA_ENDPOINT"),
-	}
-	computeClient, err := openstack.NewComputeV2(conohaClient, eo)
-	if err != nil {
-		log.Fatalf("Compute Client Failed: %v", err)
-		return "", err
-	}
-
+func (bot *Bot) GetIPaddr() (string, error) {
 	var ip string
-	pager := servers.List(computeClient, nil)
+	pager := servers.List(bot.computeClient, nil)
 	pager.EachPage(func(page pagination.Page) (bool, error) {
 		serverList, err := servers.ExtractServers(page)
 		if err != nil {
@@ -133,20 +130,9 @@ func GetIPaddr() (string, error) {
 
 // IsServerRunは"instance_name_tag":"ConohaChatOps"のVMが存在するか確認する関数
 // 戻り値がtrueの場合はVMが存在し，falseの場合はVMは存在しない．
-func IsServerRun() bool {
-	eo := gophercloud.EndpointOpts{
-		Type:   "compute",
-		Region: os.Getenv("CONOHA_ENDPOINT"),
-	}
-
-	computeClient, err := openstack.NewComputeV2(conohaClient, eo)
-	if err != nil {
-		log.Fatalf("Compute Client Failed: %v", err)
-		return false
-	}
-
+func (bot *Bot) IsServerRun() bool {
 	var uuid string
-	pager := servers.List(computeClient, nil)
+	pager := servers.List(bot.computeClient, nil)
 	pager.EachPage(func(page pagination.Page) (bool, error) {
 		serverList, err := servers.ExtractServers(page)
 		if err != nil {
@@ -167,17 +153,7 @@ func IsServerRun() bool {
 	return true
 }
 
-func OpenServer(imageRef string, flavorRef string) error {
-	eo := gophercloud.EndpointOpts{
-		Type:   "compute",
-		Region: os.Getenv("CONOHA_ENDPOINT"),
-	}
-	computeClient, err := openstack.NewComputeV2(conohaClient, eo)
-	if err != nil {
-		log.Fatalf("Compute Client Failed: %v", err)
-		return err
-	}
-
+func (bot *Bot) OpenServer(imageRef string, flavorRef string) error {
 	co := servers.CreateOpts{
 		Name:      "ConohaChatOps",
 		ImageRef:  imageRef,
@@ -192,13 +168,13 @@ func OpenServer(imageRef string, flavorRef string) error {
 		},
 	}
 
-	server, err := servers.Create(computeClient, co).Extract()
+	server, err := servers.Create(bot.computeClient, co).Extract()
 	if err != nil {
 		log.Fatalf("Create a Server Failed: %v", err)
 		return err
 	}
 
-	err = servers.WaitForStatus(computeClient, server.ID, "ACTIVE", 300)
+	err = servers.WaitForStatus(bot.computeClient, server.ID, "ACTIVE", 300)
 	if err != nil {
 		log.Fatalf("Unable to create for server: %v", err)
 		return err
@@ -207,19 +183,9 @@ func OpenServer(imageRef string, flavorRef string) error {
 	return nil
 }
 
-func CloseServer() error {
-	eo := gophercloud.EndpointOpts{
-		Type:   "compute",
-		Region: os.Getenv("CONOHA_ENDPOINT"),
-	}
-	computeClient, err := openstack.NewComputeV2(conohaClient, eo)
-	if err != nil {
-		log.Fatalf("Compute Client Failed: %v", err)
-		return err
-	}
-
+func (bot *Bot) CloseServer() error {
 	var uuid string
-	pager := servers.List(computeClient, nil)
+	pager := servers.List(bot.computeClient, nil)
 	pager.EachPage(func(page pagination.Page) (bool, error) {
 		serverList, err := servers.ExtractServers(page)
 		if err != nil {
@@ -235,13 +201,13 @@ func CloseServer() error {
 		return true, nil
 	})
 
-	err = startstop.Stop(computeClient, uuid).ExtractErr()
+	err := startstop.Stop(bot.computeClient, uuid).ExtractErr()
 	if err != nil {
 		log.Fatalf("Stop a Server Failed: %v", err)
 		return err
 	}
 
-	err = servers.WaitForStatus(computeClient, uuid, "SHUTOFF", 300)
+	err = servers.WaitForStatus(bot.computeClient, uuid, "SHUTOFF", 300)
 	if err != nil {
 		log.Fatalf("Unable to stop for server: %v", err)
 		return err
@@ -250,19 +216,9 @@ func CloseServer() error {
 	return nil
 }
 
-func DeleteServer() error {
-	eo := gophercloud.EndpointOpts{
-		Type:   "compute",
-		Region: os.Getenv("CONOHA_ENDPOINT"),
-	}
-	computeClient, err := openstack.NewComputeV2(conohaClient, eo)
-	if err != nil {
-		log.Fatalf("Compute Client Failed: %v", err)
-		return err
-	}
-
+func (bot *Bot) DeleteServer() error {
 	var uuid string
-	pager := servers.List(computeClient, nil)
+	pager := servers.List(bot.computeClient, nil)
 	pager.EachPage(func(page pagination.Page) (bool, error) {
 		serverList, err := servers.ExtractServers(page)
 		if err != nil {
@@ -278,13 +234,13 @@ func DeleteServer() error {
 		return true, nil
 	})
 
-	err = servers.Delete(computeClient, uuid).ExtractErr()
+	err := servers.Delete(bot.computeClient, uuid).ExtractErr()
 	if err != nil {
 		log.Fatalf("Delete a Server Failed: %v", err)
 		return err
 	}
 
-	err = servers.WaitForStatus(computeClient, uuid, "DELETED", 300)
+	err = servers.WaitForStatus(bot.computeClient, uuid, "DELETED", 300)
 	if err != nil {
 		if _, ok := err.(gophercloud.ErrDefault404); !ok {
 			log.Fatalf("Deleting server %q failed: %v", uuid, err)
@@ -296,20 +252,9 @@ func DeleteServer() error {
 	return nil
 }
 
-func CreateImage() error {
-	eo := gophercloud.EndpointOpts{
-		Type:   "compute",
-		Region: os.Getenv("CONOHA_ENDPOINT"),
-	}
-
-	computeClient, err := openstack.NewComputeV2(conohaClient, eo)
-	if err != nil {
-		log.Fatalf("Compute Client Failed: %v", err)
-		return err
-	}
-
+func (bot *Bot) CreateImage() error {
 	var uuid string
-	pager := servers.List(computeClient, nil)
+	pager := servers.List(bot.computeClient, nil)
 	pager.EachPage(func(page pagination.Page) (bool, error) {
 		serverList, err := servers.ExtractServers(page)
 		if err != nil {
@@ -329,13 +274,13 @@ func CreateImage() error {
 		Name: "ConohaChatOps-snapshot",
 	}
 
-	imageID, err := servers.CreateImage(computeClient, uuid, snapshotOpts).ExtractImageID()
+	imageID, err := servers.CreateImage(bot.computeClient, uuid, snapshotOpts).ExtractImageID()
 	if err != nil {
 		log.Fatalf("Create Image Failed: %v", err)
 		return err
 	}
 
-	err = WaitForImage(computeClient, imageID, "ACTIVE")
+	err = waitForImage(bot.computeClient, imageID, "ACTIVE")
 	if err != nil {
 		log.Fatalf("Unable to save for server image: %v", err)
 		return err
@@ -344,28 +289,9 @@ func CreateImage() error {
 	return nil
 }
 
-func DeleteImage() error {
-	eo := gophercloud.EndpointOpts{
-		Type:   "compute",
-		Region: os.Getenv("CONOHA_ENDPOINT"),
-	}
-	computeClient, err := openstack.NewComputeV2(conohaClient, eo)
-	if err != nil {
-		log.Fatalf("Compute Client Failed: %v", err)
-		return err
-	}
-	eo = gophercloud.EndpointOpts{
-		Type:   "image",
-		Region: os.Getenv("CONOHA_ENDPOINT"),
-	}
-	imageClient, err := openstack.NewImageServiceV2(conohaClient, eo)
-	if err != nil {
-		log.Fatalf("Compute Client Failed: %v", err)
-		return err
-	}
-
+func (bot *Bot) DeleteImage() error {
 	var uuid string
-	pager := images.ListDetail(computeClient, nil)
+	pager := images.ListDetail(bot.computeClient, nil)
 	pager.EachPage(func(page pagination.Page) (bool, error) {
 		imageList, err := images.ExtractImages(page)
 		if err != nil {
@@ -380,7 +306,7 @@ func DeleteImage() error {
 		return true, nil
 	})
 
-	err = images.Delete(imageClient, uuid).ExtractErr()
+	err := images.Delete(bot.imageClient, uuid).ExtractErr()
 	if err != nil {
 		log.Fatalf("Delete Image Failed: %v", err)
 		return err
@@ -393,7 +319,7 @@ func DeleteImage() error {
 	return nil
 }
 
-func WaitForImage(client *gophercloud.ServiceClient, imageID string, target string) error {
+func waitForImage(client *gophercloud.ServiceClient, imageID string, target string) error {
 	for {
 		image, err := images.Get(client, imageID).Extract()
 		if err != nil {
