@@ -87,7 +87,7 @@ func GetFlavorRef(memSize int64) (string, error) {
 			return false, err
 		}
 		for _, f := range flavorList {
-			//MEMO Conohaの旧プラン(Disk:50GB)のIDも残っている為DISKとRAMで判定
+			// Conohaの旧プラン(Disk:50GB)のIDも残っている為DISKとRAMで判定
 			if f.Disk == 100 && f.RAM == int(memSize)*1024 {
 				flavorRef = f.ID
 			}
@@ -129,6 +129,42 @@ func GetIPaddr() (string, error) {
 		return true, nil
 	})
 	return ip, nil
+}
+
+// IsServerRunは"instance_name_tag":"ConohaChatOps"のVMが存在するか確認する関数
+// 戻り値がtrueの場合はVMが存在し，falseの場合はVMは存在しない．
+func IsServerRun() bool {
+	eo := gophercloud.EndpointOpts{
+		Type:   "compute",
+		Region: os.Getenv("CONOHA_ENDPOINT"),
+	}
+
+	computeClient, err := openstack.NewComputeV2(conohaClient, eo)
+	if err != nil {
+		log.Fatalf("Compute Client Failed: %v", err)
+		return false
+	}
+
+	var uuid string
+	pager := servers.List(computeClient, nil)
+	pager.EachPage(func(page pagination.Page) (bool, error) {
+		serverList, err := servers.ExtractServers(page)
+		if err != nil {
+			fmt.Println(err)
+			return true, nil
+		}
+		for _, s := range serverList {
+			//TODO 好きな名前を設定できるように
+			if s.Metadata["instance_name_tag"] == "ConohaChatOps" {
+				uuid = s.ID
+			}
+		}
+		return true, nil
+	})
+	if uuid == "" {
+		return false
+	}
+	return true
 }
 
 func OpenServer(imageRef string, flavorRef string) error {

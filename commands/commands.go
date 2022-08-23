@@ -25,7 +25,7 @@ var (
 					Description: "Choice memory size",
 					Type:        discordgo.ApplicationCommandOptionInteger,
 					Required:    true,
-					//TODO 512Mbのプランも追加するべき?
+					//NOTE 512MBのプランは対応していないサーバーも多い為，候補には挙げない．
 					Choices: []*discordgo.ApplicationCommandOptionChoice{
 						{
 							Name:  "1GB",
@@ -77,8 +77,6 @@ var (
 			})
 		},
 		"server-close": func(s *discordgo.Session, i *discordgo.InteractionCreate) {
-			//TODO 既にサーバーが閉じられているか確認する
-
 			if isRunning == true {
 				s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
 					Type: discordgo.InteractionResponseChannelMessageWithSource,
@@ -87,9 +85,17 @@ var (
 					},
 				})
 				return
+			} else if conoha.IsServerRun() == false {
+				s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+					Type: discordgo.InteractionResponseChannelMessageWithSource,
+					Data: &discordgo.InteractionResponseData{
+						Content: "Could not find a server to close.",
+					},
+				})
+				return
 			}
-
 			isRunning = true
+
 			//TODO 実行していた時間の利用料金も表示させたい
 			s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
 				Type: discordgo.InteractionResponseDeferredChannelMessageWithSource,
@@ -137,9 +143,18 @@ var (
 					},
 				})
 				return
+			} else if conoha.IsServerRun() == true {
+				s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+					Type: discordgo.InteractionResponseChannelMessageWithSource,
+					Data: &discordgo.InteractionResponseData{
+						Content: "The server is already open.\n" +
+							"At this time, management of more than two servers is not supported.",
+					},
+				})
+				return
 			}
-
 			isRunning = true
+
 			options := i.ApplicationCommandData().Options
 			memSize := options[0].IntValue()
 
@@ -185,7 +200,7 @@ var (
 					"Server IP:" + ip,
 			})
 
-			//TODO 使用したイメージの削除
+			// 使用したイメージの削除
 			err = conoha.DeleteImage()
 			if err != nil {
 				log.Fatalf("Failed to delete server image: %v", err)
