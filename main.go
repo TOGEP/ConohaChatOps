@@ -27,16 +27,25 @@ func main() {
 
 	discord, err := discordgo.New("Bot " + os.Getenv("BOTTOKEN"))
 	if err != nil {
-		log.Fatalf("Invalid bot parametes: %v", err)
+		log.Fatalf("Invalid BOTTOKEN: %v", err)
 		return
 	}
 
+	bot, err := conoha.NewBot(discord)
+	if err != nil {
+		log.Fatalf("Failed token publish. Please check env file.: %v", err)
+	}
+
+	// discordReady
+	discord.AddHandler(func(s *discordgo.Session, i *discordgo.InteractionCreate) {
+		commands.CreateCommands(bot.Session, os.Getenv("GUILDID"))
+	})
+
 	discord.AddHandler(func(s *discordgo.Session, i *discordgo.InteractionCreate) {
 		if h, ok := commandHandlers[i.ApplicationCommandData().Name]; ok {
-			h(s, i)
+			h(bot, i)
 		}
 	})
-	discord.AddHandler(discordReady)
 
 	err = discord.Open()
 	if err != nil {
@@ -55,9 +64,4 @@ func main() {
 
 	log.Println("Successfully shut down")
 	return
-}
-
-func discordReady(s *discordgo.Session, r *discordgo.Ready) {
-	commands.CreateCommands(s, os.Getenv("GUILDID"))
-	conoha.Init()
 }

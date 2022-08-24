@@ -65,9 +65,9 @@ var (
 		},
 	}
 
-	CommandHandlers = map[string]func(s *discordgo.Session, i *discordgo.InteractionCreate){
-		"server-help": func(s *discordgo.Session, i *discordgo.InteractionCreate) {
-			s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+	CommandHandlers = map[string]func(bot *conoha.Bot, i *discordgo.InteractionCreate){
+		"server-help": func(bot *conoha.Bot, i *discordgo.InteractionCreate) {
+			bot.Session.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
 				Type: discordgo.InteractionResponseChannelMessageWithSource,
 				Data: &discordgo.InteractionResponseData{
 					Content: "Hi there, I am a bot built on slash commands!\n" +
@@ -76,17 +76,17 @@ var (
 				},
 			})
 		},
-		"server-close": func(s *discordgo.Session, i *discordgo.InteractionCreate) {
+		"server-close": func(bot *conoha.Bot, i *discordgo.InteractionCreate) {
 			if isRunning == true {
-				s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+				bot.Session.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
 					Type: discordgo.InteractionResponseChannelMessageWithSource,
 					Data: &discordgo.InteractionResponseData{
 						Content: "Another commands running. Please try again later.",
 					},
 				})
 				return
-			} else if conoha.IsServerRun() == false {
-				s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+			} else if bot.IsServerRun() == false {
+				bot.Session.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
 					Type: discordgo.InteractionResponseChannelMessageWithSource,
 					Data: &discordgo.InteractionResponseData{
 						Content: "Could not find a server to close.",
@@ -97,7 +97,7 @@ var (
 			isRunning = true
 
 			//TODO 実行していた時間の利用料金も表示させたい
-			s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+			bot.Session.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
 				Type: discordgo.InteractionResponseDeferredChannelMessageWithSource,
 				Data: &discordgo.InteractionResponseData{
 					Content: "Started closing server.\n" +
@@ -106,45 +106,45 @@ var (
 			})
 
 			// 起動中のVMを停止
-			err := conoha.CloseServer()
+			err := bot.CloseServer()
 			if err != nil {
 				log.Fatalf("Failed to stop server: %v", err)
 			}
 			log.Println("closed server.")
 
 			// 停止したVMのイメージ作成
-			err = conoha.CreateImage()
+			err = bot.CreateImage()
 			if err != nil {
 				log.Fatalf("Failed to create image: %v", err)
 			}
 			log.Println("saved server image.")
 
 			// イメージ作成済みのVMを削除
-			err = conoha.DeleteServer()
+			err = bot.DeleteServer()
 			if err != nil {
 				log.Fatalf("Failed to delete server: %v", err)
 			}
 			log.Println("deleted server")
 
 			// discordに完了通知
-			s.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{
+			bot.Session.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{
 				Content: "The server was successfully stopped!",
 			})
 			isRunning = false
 		},
-		"server-open": func(s *discordgo.Session, i *discordgo.InteractionCreate) {
+		"server-open": func(bot *conoha.Bot, i *discordgo.InteractionCreate) {
 			//TODO 既にサーバーが開いているか確認する
 
 			if isRunning == true {
-				s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+				bot.Session.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
 					Type: discordgo.InteractionResponseChannelMessageWithSource,
 					Data: &discordgo.InteractionResponseData{
 						Content: "Another commands running. Please try again later.",
 					},
 				})
 				return
-			} else if conoha.IsServerRun() == true {
-				s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+			} else if bot.IsServerRun() == true {
+				bot.Session.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
 					Type: discordgo.InteractionResponseChannelMessageWithSource,
 					Data: &discordgo.InteractionResponseData{
 						Content: "The server is already open.\n" +
@@ -158,7 +158,7 @@ var (
 			options := i.ApplicationCommandData().Options
 			memSize := options[0].IntValue()
 
-			s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+			bot.Session.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
 				Type: discordgo.InteractionResponseDeferredChannelMessageWithSource,
 				Data: &discordgo.InteractionResponseData{
 					Content: "Started opening server.(memory size " + strconv.FormatInt(memSize, 10) + "GB plan)\n" +
@@ -167,13 +167,13 @@ var (
 			})
 
 			// 保存したイメージIDの取り出し
-			imageRef, err := conoha.GetImageRef()
+			imageRef, err := bot.GetImageRef()
 			if err != nil {
 				log.Fatalf("Image could not be found: %v", err)
 			}
 
 			// 該当プランIDの取り出し
-			flavorRef, err := conoha.GetFlavorRef(memSize)
+			flavorRef, err := bot.GetFlavorRef(memSize)
 			if err != nil {
 				log.Fatalf("Flavor cloud not be found: %v", err)
 			}
@@ -182,26 +182,26 @@ var (
 			log.Println("Opening server...")
 			log.Printf("imageRef:%v\n", imageRef)
 			log.Printf("flavorRef:%v\n", flavorRef)
-			err = conoha.OpenServer(imageRef, flavorRef)
+			err = bot.OpenServer(imageRef, flavorRef)
 			if err != nil {
 				log.Fatalf("Failed to stop server: %v", err)
 			}
 			log.Println("Opened server.")
 
 			// IPの取得
-			ip, err := conoha.GetIPaddr()
+			ip, err := bot.GetIPaddr()
 			if err != nil {
 				log.Fatalf("IP addr cloud not be found: %v", err)
 			}
 
 			// discordにIPの出力
-			s.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{
+			bot.Session.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{
 				Content: "The server was successfully opened!\n" +
 					"Server IP:" + ip,
 			})
 
 			// 使用したイメージの削除
-			err = conoha.DeleteImage()
+			err = bot.DeleteImage()
 			if err != nil {
 				log.Fatalf("Failed to delete server image: %v", err)
 			}
