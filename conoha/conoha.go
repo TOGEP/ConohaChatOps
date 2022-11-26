@@ -174,7 +174,7 @@ func (bot *Bot) OpenServer(imageRef string, flavorRef string) error {
 		return err
 	}
 
-	err = servers.WaitForStatus(bot.computeClient, server.ID, "ACTIVE", 300)
+	err = servers.WaitForStatus(bot.computeClient, server.ID, "ACTIVE", 1000)
 	if err != nil {
 		log.Fatalf("Unable to create for server: %v", err)
 		return err
@@ -207,7 +207,7 @@ func (bot *Bot) CloseServer() error {
 		return err
 	}
 
-	err = servers.WaitForStatus(bot.computeClient, uuid, "SHUTOFF", 300)
+	err = servers.WaitForStatus(bot.computeClient, uuid, "SHUTOFF", 1000)
 	if err != nil {
 		log.Fatalf("Unable to stop for server: %v", err)
 		return err
@@ -240,7 +240,7 @@ func (bot *Bot) DeleteServer() error {
 		return err
 	}
 
-	err = servers.WaitForStatus(bot.computeClient, uuid, "DELETED", 300)
+	err = servers.WaitForStatus(bot.computeClient, uuid, "DELETED", 1000)
 	if err != nil {
 		if _, ok := err.(gophercloud.ErrDefault404); !ok {
 			log.Fatalf("Deleting server %q failed: %v", uuid, err)
