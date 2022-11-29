@@ -178,6 +178,14 @@ var (
 				log.Fatalf("Flavor cloud not be found: %v", err)
 			}
 
+			// imageRefとflavorRefを取得できないパターンがあったので，一時的に対策...
+			if imageRef == "" || flavorRef == "" {
+				bot.Session.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{
+					Content: "Failed to open server. Please try again later.",
+				})
+				return
+			}
+
 			// イメージID,プランIDを基にVM作成
 			log.Println("Opening server...")
 			log.Printf("imageRef:%v\n", imageRef)
