@@ -1,32 +1,33 @@
 ## ConohaChatOps
 ConohaChatOps is an application made to manage conoha vps from discord.  
-**ConohaChatOps**は[Conoha VPS](ttps://www.conoha.jp/)をDiscord上から管理するために作られたアプリケーションです。
+**ConohaChatOps**は[Conoha VPS](ttps://www.conoha.jp/)をDiscord上から管理するために作られたアプリケーションです.
 
 ## Requirement
 Go1.16 or later
 
 ## 使い方
-以下、[Conoha](https://www.conoha.jp/)にアカウント登録済みであることを前提に話を進めています。
+以下，[Conoha](https://www.conoha.jp/)にアカウント登録済みであることを前提に話を進めています.
 
-Conohaコントロールパネルから「サーバー追加」を選択し、以下に従って設定してください．
+Conohaコントロールパネルから「サーバー追加」を選択し，以下に従って設定してください．
 * サービス : VPSを選択
 * VPS割引きっぷ : 利用しない
 * プラン : お好きなプランを選択
-  > ※ 後ほどDiscordのコマンドからVPSを建てる際にプランを上書きする為、設定に苦労せず、値段のかからないプラン(1GBなど)を選択した方が良いです．
+  > ※ 後ほどDiscordのコマンドからVPSを建てる際にプランを上書きする為，設定に苦労せず，値段のかからないプラン(1GBなど)を選択した方が良いです．
 * イメージタイプ : お好きなイメージを選択
-  > ※ 「アプリケーション」 > 「Minecraft Java版」のような作成済みのアプリケーションテンプレートを使っても良いですが、  
-  > ファイアウォールの操作や仮想メモリの設定は必要最低限(或いはされていない)為、こだわりがある人は自分で最初からセットアップした方が良いです。
+  > ※ 「アプリケーション」 > 「Minecraft Java版」のような作成済みのアプリケーションテンプレートを使っても良いですが，  
+  > ファイアウォールの操作や仮想メモリの設定は必要最低限(或いはされていない)為，こだわりがある人は自分で最初からセットアップした方が良いです.
 * rootパスワード : お好きなパスワードを入力
-  > ※ この項目はConohaChatOpsから参照することはありません。
+  > ※ この項目はConohaChatOpsから参照することはありません.
 * ネームタグ : 「ConohaChatOps」と入力
 
-ここまでの操作で，以下の画面のようになっていれば、画面右から「追加」を選択します。
+ここまでの操作で，以下の画面のようになっていれば，画面右から「追加」を選択します.
 
 ![Conoha-VPSSettings.png](docs/img/Conoha-VPSSettings.png)
 
-そして，VMを一度手動で立ち上げた後はDiscordを通してVMを操作することになります。  
-Botを常駐化する手法はいくつか存在しますが、ここでは以下の2つを紹介します．
+そして，VMを一度手動で立ち上げた後はDiscordを通してVMを操作することになります.  
+Botを常駐化する手法はいくつか存在しますが，ここでは以下の3つを紹介します．
 * [ローカルでBotを稼働する場合](#ローカルでBotを稼働する場合)
+* [RailwayでBotを稼働する場合](#RailwayでBotを稼働する場合)
 * [HerokuでBotを稼働する場合](#HerokuでBotを稼働する場合)
 
 ### ローカルでBotを稼働する場合
@@ -57,6 +58,21 @@ CONOHA_PASSWORD=
 $ go run main.go
 ```
 
+### RailwayでBotを稼働する場合
+1. 本リポジトリをForkする
+
+2. [Railway](https://railway.app/)にアカウント登録を行う(Github連携を推奨)
+
+3. [RailwayのDashborad](https://railway.app/dashboard)から「New Project」を選択してForkした本リポジトリを選択
+
+4. [環境変数の取得方法](#環境変数の取得方法)を参考にして「Variables」を以下のように設定
+
+![Railway-SettingsConfigVars](docs/img/Railway-SettingsConfigVars.png)
+
+5. 同画面の「Settings」 > 「Build Command」に `go build -o bin/ConohaChatOps` を入力
+
+6. 「Deployments」から起動を確認!
+
 ### HerokuでBotを稼働する場合
 1. 本リポジトリをForkする
 
@@ -75,14 +91,14 @@ $ go run main.go
 <details>
 <summary>1. BOTTOKEN</summary>
   
-[Discord Developer Portalを参考に](https://discord.com/developers/docs/getting-started)アプリケーションを作成後、左メニューの 「Bot」 > TOKENをコピーで取得
+[Discord Developer Portalを参考に](https://discord.com/developers/docs/getting-started)アプリケーションを作成後，左メニューの 「Bot」 > TOKENをコピーで取得
 </details>
 
 <details>
 <summary>2. GUILDID</summary>
   
-特定のサーバのみで稼働させたい場合にのみ指定するオプション項目です。  
-[discordのサポートページを参考に](https://support.discord.com/hc/ja/articles/206346498)デベロッパモードを有効化後、Botを稼働させたいサーバーを右クリック >「IDをコピー」 で取得
+特定のサーバのみで稼働させたい場合にのみ指定するオプション項目です.  
+[discordのサポートページを参考に](https://support.discord.com/hc/ja/articles/206346498)デベロッパモードを有効化後，Botを稼働させたいサーバーを右クリック >「IDをコピー」 で取得
 </details>
 
 <details>
@@ -116,7 +132,7 @@ $ go run main.go
 <details>
 <summary>6. Conoha_USERNAME</summary>
   
-[Conohaの利用ガイドを参考に](https://support.conoha.jp/v/addapiuser/)APIユーザを追加後、ユーザ名を取得
+[Conohaの利用ガイドを参考に](https://support.conoha.jp/v/addapiuser/)APIユーザを追加後，ユーザ名を取得
 
 ![Get-ConohaAPIUserName](docs/img/Get-ConohaAPIUserName.png)
 </details>
