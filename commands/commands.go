@@ -183,6 +183,7 @@ var (
 				bot.Session.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{
 					Content: "Failed to open server. Please try again later.",
 				})
+				log.Fatal("Failed to get imageRef or flavorRef")
 				//TODO このブロックに限らず，他の要因でエラーが発生した場合にもisRunningをfalseにする
 				isRunning = false
 				return
