@@ -32,6 +32,7 @@ func NewBot(s *discordgo.Session) (*Bot, error) {
 		Username:         os.Getenv("CONOHA_USERNAME"),
 		TenantName:       os.Getenv("CONOHA_TENANTNAME"),
 		Password:         os.Getenv("CONOHA_PASSWORD"),
+		AllowReauth:      true,
 	}
 
 	pc, err := openstack.AuthenticatedClient(opts)
